@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS packs;
+DROP TABLE IF EXISTS products;

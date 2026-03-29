@@ -1,0 +1,492 @@
+openapi: 3.0.3
+info:
+  title: Pack Calculator API
+  description: Calculates optimal pack combinations for customer orders. Products have configurable pack sizes. Given an order with multiple product line items, the system determines the minimum-item, minimum-pack combination for each.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+paths:
+  /api/v1/products:
+    get:
+      tags: [Products]
+      summary: List all products
+      operationId: listProducts
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+        "204":
+          description: No products found
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Products]
+      summary: Create a product
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/products/{id}:
+    get:
+      tags: [Products]
+      summary: Get a product by ID
+      operationId: getProduct
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags: [Products]
+      summary: Update a product
+      operationId: updateProduct
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Products]
+      summary: Soft delete a product
+      operationId: deleteProduct
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "204":
+          description: Product deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/products/{id}/packs:
+    get:
+      tags: [Packs]
+      summary: List packs for a product
+      operationId: listPacksByProduct
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: List of packs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pack"
+        "204":
+          description: No packs found for product
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Packs]
+      summary: Create a pack for a product
+      operationId: createPack
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePackRequest"
+      responses:
+        "201":
+          description: Pack created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pack"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/products/{id}/packs/batch:
+    post:
+      tags: [Packs]
+      summary: Create multiple packs for a product
+      operationId: createPackBatch
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePackBatchRequest"
+      responses:
+        "201":
+          description: Packs created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pack"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/packs/{id}:
+    put:
+      tags: [Packs]
+      summary: Update a pack size
+      operationId: updatePack
+      parameters:
+        - $ref: "#/components/parameters/PackId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePackRequest"
+      responses:
+        "200":
+          description: Pack updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pack"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Packs]
+      summary: Soft delete a pack
+      operationId: deletePack
+      parameters:
+        - $ref: "#/components/parameters/PackId"
+      responses:
+        "204":
+          description: Pack deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/orders:
+    post:
+      tags: [Orders]
+      summary: Calculate optimal pack combination for an order
+      description: |
+        Given a list of product/quantity pairs, calculates the optimal pack combination for each item.
+
+        Rules (in strict priority order):
+        1. Only whole packs can be sent — packs cannot be broken open
+        2. Send the least amount of items to fulfil the order
+        3. Within rule 2, send as few packs as possible
+      operationId: calculateOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalculateOrderRequest"
+            examples:
+              single_product:
+                summary: Single product order
+                value:
+                  items:
+                    - product_id: 1
+                      quantity: 501
+              multi_product:
+                summary: Multi-product order
+                value:
+                  items:
+                    - product_id: 1
+                      quantity: 501
+                    - product_id: 2
+                      quantity: 12001
+      responses:
+        "200":
+          description: Calculation results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalculateOrderResponse"
+              examples:
+                single_product:
+                  summary: 501 items with packs 250,500,1000,2000,5000
+                  value:
+                    results:
+                      - quantity: 501
+                        product_id: 1
+                        total_items: 750
+                        total_packs: 2
+                        packs:
+                          - pack:
+                              id: 2
+                              product_id: 1
+                              size: 500
+                            quantity: 1
+                          - pack:
+                              id: 1
+                              product_id: 1
+                              size: 250
+                            quantity: 1
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          description: No packs available for product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  parameters:
+    ProductId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Product ID
+
+    PackId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Pack ID
+
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    Pack:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        size:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    CreateProductRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "Widget"
+
+    UpdateProductRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "Updated Widget"
+
+    CreatePackRequest:
+      type: object
+      required: [size]
+      properties:
+        size:
+          type: integer
+          minimum: 1
+          example: 250
+
+    CreatePackBatchRequest:
+      type: object
+      required: [sizes]
+      properties:
+        sizes:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 1
+          example: [250, 500, 1000, 2000, 5000]
+
+    OrderItem:
+      type: object
+      required: [product_id, quantity]
+      properties:
+        product_id:
+          type: integer
+          example: 1
+        quantity:
+          type: integer
+          minimum: 1
+          example: 501
+
+    CalculateOrderRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/OrderItem"
+          description: Each product_id must be unique within the request
+
+    CalculationResultPack:
+      type: object
+      properties:
+        pack:
+          $ref: "#/components/schemas/Pack"
+        quantity:
+          type: integer
+
+    CalculationResult:
+      type: object
+      properties:
+        quantity:
+          type: integer
+        product_id:
+          type: integer
+        total_items:
+          type: integer
+        total_packs:
+          type: integer
+        packs:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalculationResultPack"
+
+    CalculateOrderResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalculationResult"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Conflict:
+      description: Duplicate pack size for product
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
