@@ -58,13 +58,64 @@
 | `make run`              | Start the application                       |
 | `make build`            | Build the application                       |
 | `make test`             | Run all tests                               |
-| `make test-unit`        | Run unit tests                              |
 | `make test-integration` | Run integration tests                       |
 | `make generate-mocks`   | Generate mocks for all domain interfaces    |
 | `make migrate-up`       | Run database migrations                     |
 | `make migrate-down`     | Rollback database migrations                |
 | `make docker-up`        | Start the application in a Docker container |
 | `make docker-down`      | Stop the Docker container                   |
+
+## Testing
+
+```
+          ╱  ╲
+         ╱    ╲           E2E
+        ╱ E2E  ╲          - Playwright — full user flows
+       ╱────────╲
+      ╱          ╲        Integration
+     ╱Integration ╲       - testify + real PostgreSQL/Redis
+    ╱──────────────╲
+   ╱                ╲     Unit
+  ╱   Unit  Tests    ╲    - testify + mockgen
+ ╱────────────────────╲
+```
+
+### Unit tests
+
+Unit tests are written with `testify` and `mockgen`. They cover two layers:
+
+- **Service layer** (`internal/service/`) — Each service method is tested with mocked repository dependencies using `gomock`. Tests verify business logic in isolation.
+- **Handler layer** (`internal/api/handler/`) — Table-driven tests with mocked services. Each test case defines its own mock setup, expected HTTP status code, and response body.
+
+```bash
+make test
+```
+
+### Integration tests
+
+Integration tests are written with `testify` and live in the repository layer (`internal/repository/`). They run against real PostgreSQL and Redis instances, using helper functions (`setupTestDB`, `setupTestRedis`) and `t.Cleanup()` to manage test data.
+
+Requires `TEST_DATABASE_URL` and `TEST_REDIS_ADDR` environment variables.
+
+```bash
+make test-integration
+```
+
+### E2E tests
+
+End-to-end tests use [Playwright](https://playwright.dev/) and run against the full stack (frontend + backend + database). They exercise real user flows through the browser.
+
+```bash
+cd frontend && pnpm test:e2e
+```
+
+### Mock generation
+
+Mocks are generated from domain interfaces using `mockgen` and stored in `internal/mocks/`.
+
+```bash
+make generate-mocks
+```
 
 ## Deploy information
 

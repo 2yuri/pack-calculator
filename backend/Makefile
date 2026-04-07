@@ -6,6 +6,11 @@ export $(shell sed 's/=.*//' .env)
 .PHONY: run build test test-unit test-integration generate-mocks migrate-up migrate-down docker-up docker-down docker-build
 
 DSN=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
+ifneq ($(CACHE_PASSWORD),)
+REDIS_ADDR=redis://default:$(CACHE_PASSWORD)@$(CACHE_HOST):$(CACHE_PORT)/0
+else
+REDIS_ADDR=$(CACHE_HOST):$(CACHE_PORT)
+endif
 
 ## Project
 run:
@@ -18,11 +23,8 @@ build:
 test:
 	go test ./... -v -count=1
 
-test-unit:
-	go test ./internal/service/ -v -count=1
-
 test-integration:
-	go test ./internal/repository/ -v -count=1
+	TEST_DATABASE_URL=$(DSN) TEST_REDIS_ADDR=$(REDIS_ADDR) go test ./internal/repository/ -v -count=1
 
 ## Mocks
 generate-mocks:
