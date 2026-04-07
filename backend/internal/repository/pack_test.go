@@ -101,6 +101,64 @@ func TestPackRepository_Delete(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 }
 
+func TestPackRepository_GetAll(t *testing.T) {
+	db := setupTestDB(t)
+	productRepo := repository.NewProduct(db)
+	packRepo := repository.NewPack(db)
+
+	p1 := createTestProduct(t, productRepo)
+	p2 := createTestProduct(t, productRepo)
+
+	packRepo.Create(context.Background(), p1.ID, 250)
+	packRepo.Create(context.Background(), p1.ID, 500)
+	packRepo.Create(context.Background(), p2.ID, 1000)
+
+	packs, err := packRepo.GetAll(context.Background())
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, len(packs), 3)
+}
+
+func TestPackRepository_GetAll_ExcludesSoftDeleted(t *testing.T) {
+	db := setupTestDB(t)
+	productRepo := repository.NewProduct(db)
+	packRepo := repository.NewPack(db)
+
+	product := createTestProduct(t, productRepo)
+	created, _ := packRepo.Create(context.Background(), product.ID, 250)
+	packRepo.Create(context.Background(), product.ID, 500)
+
+	packRepo.Delete(context.Background(), created.ID)
+
+	packs, err := packRepo.GetAll(context.Background())
+	require.NoError(t, err)
+	for _, p := range packs {
+		assert.NotEqual(t, created.ID, p.ID)
+	}
+}
+
+func TestPackRepository_GetByID(t *testing.T) {
+	db := setupTestDB(t)
+	productRepo := repository.NewProduct(db)
+	packRepo := repository.NewPack(db)
+
+	product := createTestProduct(t, productRepo)
+	created, _ := packRepo.Create(context.Background(), product.ID, 250)
+
+	pack, err := packRepo.GetByID(context.Background(), created.ID)
+	require.NoError(t, err)
+	assert.Equal(t, created.ID, pack.ID)
+	assert.Equal(t, product.ID, pack.ProductID)
+	assert.Equal(t, 250, pack.Size)
+}
+
+func TestPackRepository_GetByID_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	packRepo := repository.NewPack(db)
+
+	_, err := packRepo.GetByID(context.Background(), 999999)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+}
+
 func TestPackRepository_SoftDelete_ExcludedFromGetByProductID(t *testing.T) {
 	db := setupTestDB(t)
 	productRepo := repository.NewProduct(db)
